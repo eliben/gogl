@@ -86,14 +86,24 @@ func (lst *List[T]) InsertAfter(node *Node[T], val T) *Node[T] {
 	}
 	newNode.next.prev = newNode
 	newNode.prev.next = newNode
-	lst.length += 1
+	lst.length++
 	return newNode
 }
 
-// TODO
-//func (lst *List[T]) InsertBefore(node *Node[T], val T) *Node[T] {
+// InsertBefore inserts a new node with the given value before `node`.
+func (lst *List[T]) InsertBefore(node *Node[T], val T) *Node[T] {
+	prev := node.prev
+	return lst.InsertAfter(prev, val)
+}
 
-//}
+// Remove removes the given node from the list.
+func (lst *List[T]) Remove(node *Node[T]) {
+	node.prev.next = node.next
+	node.next.prev = node.prev
+	node.next = nil
+	node.prev = nil
+	lst.length--
+}
 
 // All returns an iterator over all the values in the list.
 func (lst *List[T]) All() iter.Seq[T] {

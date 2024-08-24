@@ -50,3 +50,46 @@ func TestInsertAfter(t *testing.T) {
 	nl.InsertAfter(k, 60)
 	checkList(t, nl, []int{99, 50, 60, 33, 102})
 }
+
+func TestInsertBefore(t *testing.T) {
+	nl := New[int]()
+	nl.InsertFront(99)
+	nl.InsertBefore(nl.Front(), 102)
+	checkList(t, nl, []int{102, 99})
+	nl.InsertBefore(nl.Front(), 33)
+	checkList(t, nl, []int{33, 102, 99})
+
+	k := nl.InsertBefore(nl.Back(), 50)
+	checkList(t, nl, []int{33, 102, 50, 99})
+	nl.InsertBefore(k, 60)
+	checkList(t, nl, []int{33, 102, 60, 50, 99})
+}
+
+func TestRemove(t *testing.T) {
+	nl := New[int]()
+	nl.InsertBack(5)
+	nl.InsertBack(6)
+	nl.InsertBack(7)
+	checkList(t, nl, []int{5, 6, 7})
+
+	// Remove all elements from front
+	nl.Remove(nl.Front())
+	checkList(t, nl, []int{6, 7})
+	nl.Remove(nl.Front())
+	checkList(t, nl, []int{7})
+	nl.Remove(nl.Front())
+	checkList(t, nl, []int{})
+
+	// Remove all elements from back
+	nl = New[int]()
+	nl.InsertBack(5)
+	nl.InsertBack(6)
+	nl.InsertBack(7)
+
+	nl.Remove(nl.Back())
+	checkList(t, nl, []int{5, 6})
+	nl.Remove(nl.Back())
+	checkList(t, nl, []int{5})
+	nl.Remove(nl.Back())
+	checkList(t, nl, []int{})
+}
