@@ -165,3 +165,39 @@ func TestNextPrev(t *testing.T) {
 		t.Errorf("got %v, want %v", revVals, wantVals)
 	}
 }
+
+func TestEachBeforeAfterAndRemove(t *testing.T) {
+	// For each possible node in the list, insert an element before it and then
+	// after it, verifying that the list is correct at each step. Then also
+	// remove the node.
+	for i := range 5 {
+		nl := New[int]()
+		nl.InsertBack(10)
+		nl.InsertBack(20)
+		nl.InsertBack(30)
+		nl.InsertBack(40)
+		nl.InsertBack(50)
+
+		// n will be the i'th element in the list
+		n := nl.Front()
+		for j := 0; j < i; j++ {
+			n = nl.Next(n)
+		}
+
+		// Insert a new value before n
+		nl.InsertBefore(n, 99)
+		wantSlice := slices.Insert([]int{10, 20, 30, 40, 50}, i, 99)
+		checkList(t, nl, wantSlice)
+
+		// ... now n is at index i+1 in wantSlice
+
+		// Insert a new value after n
+		nl.InsertAfter(n, 222)
+		wantSlice = slices.Insert(wantSlice, i+2, 222)
+		checkList(t, nl, wantSlice)
+
+		nl.Remove(n)
+		wantSlice = append(wantSlice[:i+1], wantSlice[i+2:]...)
+		checkList(t, nl, wantSlice)
+	}
+}
