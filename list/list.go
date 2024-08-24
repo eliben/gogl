@@ -7,8 +7,9 @@ import (
 )
 
 type Node[T any] struct {
+	Value T
+
 	next, prev *Node[T]
-	Value      T
 }
 
 type List[T any] struct {
@@ -49,29 +50,50 @@ func (lst *List[T]) Back() *Node[T] {
 	return lst.back.prev
 }
 
+// Next returns a pointer to the next node in the list after `node`.
+func (lst *List[T]) Next(node *Node[T]) *Node[T] {
+	if nxt := node.next; nxt != lst.back {
+		return nxt
+	}
+	return nil
+}
+
+// Next returns a pointer to the previous node in the list before `node`.
+func (lst *List[T]) Prev(node *Node[T]) *Node[T] {
+	if prv := node.prev; prv != lst.front {
+		return prv
+	}
+	return nil
+}
+
 // InsertFront inserts a new node with the given value at the front of the list.
 func (lst *List[T]) InsertFront(val T) {
-	oldFirst := lst.front.next
-	lst.front.next = &Node[T]{
-		next:  oldFirst,
-		prev:  lst.front,
-		Value: val,
-	}
-	oldFirst.prev = lst.front.next
-	lst.length += 1
+	lst.InsertAfter(lst.front, val)
 }
 
 // InsertBack inserts a new node with the given value at the back of the list.
 func (lst *List[T]) InsertBack(val T) {
 	oldLast := lst.back.prev
-	lst.back.prev = &Node[T]{
-		next:  lst.back,
-		prev:  oldLast,
-		Value: val,
-	}
-	oldLast.next = lst.back.prev
-	lst.length += 1
+	lst.InsertAfter(oldLast, val)
 }
+
+// InsertAfter inserts a new node with the given value after `node`.
+func (lst *List[T]) InsertAfter(node *Node[T], val T) *Node[T] {
+	newNode := &Node[T]{
+		Value: val,
+		next:  node.next,
+		prev:  node,
+	}
+	newNode.next.prev = newNode
+	newNode.prev.next = newNode
+	lst.length += 1
+	return newNode
+}
+
+// TODO
+//func (lst *List[T]) InsertBefore(node *Node[T], val T) *Node[T] {
+
+//}
 
 // All returns an iterator over all the values in the list.
 func (lst *List[T]) All() iter.Seq[T] {

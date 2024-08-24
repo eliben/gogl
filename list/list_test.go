@@ -36,3 +36,17 @@ func TestBasicInsertBack(t *testing.T) {
 	nl.InsertBack(10)
 	checkList(t, nl, []int{20, 30, 10})
 }
+
+func TestInsertAfter(t *testing.T) {
+	nl := New[int]()
+	nl.InsertFront(99)
+	nl.InsertAfter(nl.Front(), 102)
+	checkList(t, nl, []int{99, 102})
+	nl.InsertAfter(nl.Front(), 33)
+	checkList(t, nl, []int{99, 33, 102})
+
+	k := nl.InsertAfter(nl.Front(), 50)
+	checkList(t, nl, []int{99, 50, 33, 102})
+	nl.InsertAfter(k, 60)
+	checkList(t, nl, []int{99, 50, 60, 33, 102})
+}
