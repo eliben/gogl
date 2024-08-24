@@ -5,7 +5,7 @@ package priorityqueue
 // PriorityQueue is a generic priority queue with a configurable comparison
 // function.
 type PriorityQueue[T any] struct {
-	cmp func(a, b T) int
+	cmp func(T, T) int
 
 	// items holds the queue's items as a binary heap.
 	// items[0] is a dummy element that's not used. If the queue has N elements,
