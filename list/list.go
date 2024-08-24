@@ -105,11 +105,22 @@ func (lst *List[T]) Remove(node *Node[T]) {
 	lst.length--
 }
 
-// All returns an iterator over all the values in the list.
-func (lst *List[T]) All() iter.Seq[T] {
+// Values returns an iterator over all the values in the list.
+func (lst *List[T]) Values() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for node := lst.front.next; node != lst.back; node = node.next {
 			if !yield(node.Value) {
+				return
+			}
+		}
+	}
+}
+
+// Nodes returns an iterator over all the nodes in the list.
+func (lst *List[T]) Nodes() iter.Seq[*Node[T]] {
+	return func(yield func(*Node[T]) bool) {
+		for node := lst.front.next; node != lst.back; node = node.next {
+			if !yield(node) {
 				return
 			}
 		}
