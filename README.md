@@ -1,0 +1,2 @@
+# gogl
+Go Generic Library
