@@ -6,18 +6,23 @@ import (
 	"iter"
 )
 
-type Node[T any] struct {
-	Value T
-
-	next, prev *Node[T]
-}
-
+// List is a doubly-linked list. Create new lists with [New] and then use
+// the list's methods to interact with it.
 type List[T any] struct {
 	front  *Node[T]
 	back   *Node[T]
 	length int
 }
 
+// Node represents a node in the linked list; it holds a generic value, and
+// can be used as a handle into the list for insertions/removals.
+type Node[T any] struct {
+	Value T
+
+	next, prev *Node[T]
+}
+
+// New creates a new, empty linked-list.
 func New[T any]() *List[T] {
 	// A List always has two allocated sentinel nodes: front points to the
 	// first, and back points at the last. The length of the list remains
@@ -32,10 +37,12 @@ func New[T any]() *List[T] {
 	return lst
 }
 
+// Len is the number of elements in the linked list. O(1)
 func (lst *List[T]) Len() int {
 	return lst.length
 }
 
+// Front returns the first node in the list.
 func (lst *List[T]) Front() *Node[T] {
 	if lst.length == 0 {
 		return nil
@@ -43,6 +50,7 @@ func (lst *List[T]) Front() *Node[T] {
 	return lst.front.next
 }
 
+// Back returns the last node in the list.
 func (lst *List[T]) Back() *Node[T] {
 	if lst.length == 0 {
 		return nil
@@ -50,7 +58,7 @@ func (lst *List[T]) Back() *Node[T] {
 	return lst.back.prev
 }
 
-// Next returns a pointer to the next node in the list after `node`.
+// Next returns the next node in the list after `node`.
 func (lst *List[T]) Next(node *Node[T]) *Node[T] {
 	if nxt := node.next; nxt != lst.back {
 		return nxt
@@ -58,7 +66,7 @@ func (lst *List[T]) Next(node *Node[T]) *Node[T] {
 	return nil
 }
 
-// Next returns a pointer to the previous node in the list before `node`.
+// Prev returns the previous node in the list before `node`.
 func (lst *List[T]) Prev(node *Node[T]) *Node[T] {
 	if prv := node.prev; prv != lst.front {
 		return prv
