@@ -1,6 +1,9 @@
 package btree
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 type BTree[K, V any] struct {
 	cmp func(K, K) int
@@ -47,6 +50,7 @@ func NewWithTee[K, V any](cmp func(K, K) int, tee int) *BTree[K, V] {
 		root: &node[K, V]{
 			leaf: true,
 		},
+		tee: tee,
 	}
 }
 
@@ -59,9 +63,11 @@ func (bt *BTree[K, V]) Get(key K) (v V, ok bool) {
 // Insert inserts a new key=value pair into the tree. If `key` already exists
 // in the tree, its value is replaced with `value`.
 func (bt *BTree[K, V]) Insert(key K, value V) {
+	fmt.Printf("inserting %v=%v\n", key, value)
 	// If the root node is full, create a new root node with a single child:
 	// the old root. Then split.
 	if bt.nodeIsFull(bt.root) {
+		fmt.Printf("  root %p is full\n", bt.root)
 		oldRoot := bt.root
 		bt.root = &node[K, V]{
 			leaf:     false,
@@ -71,8 +77,7 @@ func (bt *BTree[K, V]) Insert(key K, value V) {
 	}
 
 	// Here we know for sure that the root is not full.
-	kv := nodeKey[K, V]{key: key, value: value}
-	bt.insertNonFull(bt.root, kv)
+	bt.insertNonFull(bt.root, nodeKey[K, V]{key: key, value: value})
 }
 
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
@@ -104,11 +109,14 @@ func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 // median key of n.children[i] into n. It assumes that n isn't full,
 // but n.children[i] is full.
 func (bt *BTree[K, V]) splitChild(n *node[K, V], i int) {
+	fmt.Printf("  splitting %p at i=%d\n", n, i)
 	// Notation: y is the i-th child of n (the one being split), and z is the
 	// new node created to adopt y's t-1 largest keys.
 	y := n.children[i]
+	fmt.Printf("  y=%p\n", y)
+
 	if bt.nodeIsFull(n) || !bt.nodeIsFull(y) {
-		panic("expect n to be non-full and y to be full")
+		panic(fmt.Sprintf("expect n to be non-full (got len=%d) and y to be full (got len %d)", len(n.keys), len(y.keys)))
 	}
 	z := &node[K, V]{
 		leaf: y.leaf,
@@ -176,7 +184,7 @@ func (bt *BTree[K, V]) insertNonFull(n *node[K, V], kv nodeKey[K, V]) {
 
 // nodeIsFull says whether n is full, meaning that it has 2t-1 keys.
 func (bt *BTree[K, V]) nodeIsFull(n *node[K, V]) bool {
-	return len(n.keys) == 2*bt.tee-1
+	return len(n.keys) >= 2*bt.tee-1
 }
 
 // nodeKeyCmp wraps bt.cmp to work on nodeKey
