@@ -12,6 +12,13 @@ type BTree[K, V any] struct {
 const tee = 10
 
 type node[K, V any] struct {
+	// Key ordering invariants (defining n=len(keys)):
+	//
+	// keys[i].key <= keys[i+1].key for each i in 0..n-2
+	//
+	// There are n+1 elements in children (0..n)
+	// if kj is any key in children[j], then:  keys[j-1].key <= kj <= keys[j].key
+	// Boundaries: k0 <= keys[0].key   and   keys[n-1].key <= kn
 	keys     []nodeKey[K, V]
 	children []*node[K, V]
 	leaf     bool
@@ -55,8 +62,13 @@ func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 	}
 
 	if n.leaf {
+		// This is a leaf node and the key wasn't found yet; return ok=false.
 		return *new(V), false
 	}
 
+	// define the relationship between the two slices in a docstring in node
+	// Because of the first loop, i is the first index where key <= n.keys[i]
+	// (it could also be len(n.keys)), so using the key ordering invariant we
+	// recurse into children[i]
 	return bt.getFromNode(key, n.children[i])
 }
