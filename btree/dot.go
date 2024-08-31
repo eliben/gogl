@@ -23,11 +23,19 @@ func (bt *BTree[K, V]) renderDot() string {
 		return nodeNames[n]
 	}
 
-	// TODO: continue here, emit node contents followed by child pointers
+	// TODO: emit child pointers with "nodeX":fY -> "nodeZ"
 	var sb strings.Builder
 	sb.WriteString(prefix)
 	for n := range bt.nodesPreOrder() {
-		sb.WriteString(fmt.Sprintf("%s\n", node2name(n)))
+		var labelParts []string
+		// Build label for this node: alternating child nodes with key nodes.
+		for i := 0; i < len(n.keys)+1; i++ {
+			labelParts = append(labelParts, fmt.Sprintf("<f%d>", i))
+			if i < len(n.keys) {
+				labelParts = append(labelParts, fmt.Sprintf("|%v|", n.keys[i].key))
+			}
+		}
+		sb.WriteString(fmt.Sprintf("%s[label = \"%s\"];\n", node2name(n), strings.Join(labelParts, "")))
 	}
 	sb.WriteString("}\n")
 
