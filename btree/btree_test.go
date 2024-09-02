@@ -1,6 +1,8 @@
 package btree
 
 import (
+	"math/rand/v2"
+	"strconv"
 	"testing"
 )
 
@@ -8,7 +10,9 @@ func intCmp(a, b int) int {
 	return a - b
 }
 
-func TestBasic(t *testing.T) {
+func TestRenderDot(t *testing.T) {
+	t.Skip()
+
 	bt := NewWithTee[int, string](intCmp, 4)
 	bt.Insert(2, "two")
 	bt.Insert(4, "four")
@@ -26,6 +30,91 @@ func TestBasic(t *testing.T) {
 	bt.Insert(23, "23")
 	bt.Insert(24, "24")
 	bt.Insert(25, "21")
-
 	bt.renderDotToImage("bt.png")
+}
+
+func checkFound(t *testing.T, bt *BTree[int, string], key int, val string) {
+	t.Helper()
+	v, ok := bt.Get(key)
+	if !ok {
+		t.Errorf("key %v not found", key)
+	}
+	if v != val {
+		t.Errorf("got %v, want %v", v, val)
+	}
+}
+
+func checkNotFound(t *testing.T, bt *BTree[int, string], key int) {
+	t.Helper()
+	v, ok := bt.Get(key)
+	if ok {
+		t.Errorf("key %v found (%v)", key, v)
+	}
+}
+
+func TestManualSmall(t *testing.T) {
+	// Manually insert and get some nodes from a tree with t=4
+	bt := NewWithTee[int, string](intCmp, 4)
+
+	// Shouldn't find keys in empty tree
+	checkNotFound(t, bt, 1)
+	checkNotFound(t, bt, 4)
+	checkNotFound(t, bt, 2)
+
+	// Insert some keys
+	bt.Insert(1, "1")
+	bt.Insert(4, "4")
+
+	// Find these, but not a key that wasn't inserted
+	checkFound(t, bt, 1, "1")
+	checkFound(t, bt, 4, "4")
+	checkNotFound(t, bt, 2)
+
+	// Insert some more keys to create a split (total > t*2-1)
+	bt.Insert(2, "2")
+	bt.Insert(3, "3")
+	bt.Insert(11, "11")
+	bt.Insert(8, "8")
+	bt.Insert(5, "5")
+	bt.Insert(9, "9")
+
+	checkFound(t, bt, 3, "3")
+	checkFound(t, bt, 8, "8")
+	checkFound(t, bt, 1, "1")
+	checkNotFound(t, bt, 6)
+
+	// Override values
+	bt.Insert(9, "99")
+	bt.Insert(2, "22")
+
+	checkFound(t, bt, 9, "99")
+	checkFound(t, bt, 2, "22")
+}
+
+func TestLargeSequential(t *testing.T) {
+	// Insert a large number of nodes
+	bt := NewWithTee[int, string](intCmp, 4)
+
+	insertNumbersUpto(bt, 350)
+	for i := 1; i < 350; i++ {
+		checkFound(t, bt, i, strconv.Itoa(i))
+	}
+}
+
+// insertNumbersUpto inserts numbers [1...upto] (inclusive) into bt into
+// a predetermined shuffled order.
+func insertNumbersUpto(bt *BTree[int, string], upto int) {
+	rnd := rand.New(rand.NewPCG(9999, 404040))
+
+	s := make([]int, upto)
+	for i := 1; i <= upto; i++ {
+		s[i-1] = i
+	}
+	rnd.Shuffle(len(s), func(i, j int) {
+		s[i], s[j] = s[j], s[i]
+	})
+
+	for _, num := range s {
+		bt.Insert(num, strconv.Itoa(num))
+	}
 }

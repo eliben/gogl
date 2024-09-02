@@ -63,11 +63,11 @@ func (bt *BTree[K, V]) Get(key K) (v V, ok bool) {
 // Insert inserts a new key=value pair into the tree. If `key` already exists
 // in the tree, its value is replaced with `value`.
 func (bt *BTree[K, V]) Insert(key K, value V) {
-	fmt.Printf("inserting %v=%v\n", key, value)
+	//fmt.Printf("inserting %v=%v\n", key, value)
 	// If the root node is full, create a new root node with a single child:
 	// the old root. Then split.
 	if bt.nodeIsFull(bt.root) {
-		fmt.Printf("  root %p is full\n", bt.root)
+		//fmt.Printf("  root %p is full\n", bt.root)
 		oldRoot := bt.root
 		bt.root = &node[K, V]{
 			leaf:     false,
@@ -109,11 +109,11 @@ func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 // median key of n.children[i] into n. It assumes that n isn't full,
 // but n.children[i] is full.
 func (bt *BTree[K, V]) splitChild(n *node[K, V], i int) {
-	fmt.Printf("  splitting %p at i=%d\n", n, i)
+	//fmt.Printf("  splitting %p at i=%d\n", n, i)
 	// Notation: y is the i-th child of n (the one being split), and z is the
 	// new node created to adopt y's t-1 largest keys.
 	y := n.children[i]
-	fmt.Printf("  y=%p\n", y)
+	//fmt.Printf("  y=%p\n", y)
 
 	if bt.nodeIsFull(n) || !bt.nodeIsFull(y) {
 		panic(fmt.Sprintf("expect n to be non-full (got len=%d) and y to be full (got len %d)", len(n.keys), len(y.keys)))
