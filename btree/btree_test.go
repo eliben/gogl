@@ -19,6 +19,13 @@ func TestBasic(t *testing.T) {
 	bt.Insert(11, "eleven")
 	bt.Insert(9, "nine")
 	bt.Insert(21, "twentyone")
+	bt.Insert(8, "eight")
+	bt.Insert(13, "thirteen")
+	bt.Insert(14, "fourteen")
+	bt.Insert(22, "22")
+	bt.Insert(23, "23")
+	bt.Insert(24, "24")
+	bt.Insert(25, "21")
 
 	bt.renderDotToImage("bt.png")
 }
