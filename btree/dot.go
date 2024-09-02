@@ -35,7 +35,12 @@ func (bt *BTree[K, V]) renderDot() string {
 				labelParts = append(labelParts, fmt.Sprintf("|%v|", n.keys[i].key))
 			}
 		}
-		sb.WriteString(fmt.Sprintf("%s[label = \"%s\"];\n", node2name(n), strings.Join(labelParts, "")))
+		sb.WriteString(fmt.Sprintf(`%s[label = "%s"];`+"\n", node2name(n), strings.Join(labelParts, "")))
+
+		for i := 0; i < len(n.children); i++ {
+			link := fmt.Sprintf("<f%d>", i)
+			sb.WriteString(fmt.Sprintf(`"%s":%s -> "%s"`+"\n", node2name(n), link, node2name(n.children[i])))
+		}
 	}
 	sb.WriteString("}\n")
 
