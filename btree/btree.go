@@ -81,27 +81,21 @@ func (bt *BTree[K, V]) Insert(key K, value V) {
 }
 
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
-	// Find the key in this node's keys, or the place where this key would
-	// fit so we can follow a child link.
-	// TODO: use slices.BinarySearchFunc?
-	i := 0
-	for i < len(n.keys) && bt.cmp(key, n.keys[i].key) > 0 {
-		i++
-	}
-	if i < len(n.keys) && bt.cmp(key, n.keys[i].key) == 0 {
-		// Found the key in this node!
+	kv := nodeKey[K, V]{key: key}
+	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
+
+	// * If the binary search finds the exact key, we return the value and true.
+	// * If the exact key wasn't found:
+	//   * If it's a leaf node, the search failed and we return ok=false.
+	//   * Otherwise, i tells us the insertion point for key in the keys slice,
+	//     meaning that keys[i-i] < key < keys[i]; therefore, we recurse into
+	//     children[i], based on the key ordering invariant.
+	if ok {
 		return n.keys[i].value, true
 	}
-
 	if n.leaf {
-		// This is a leaf node and the key wasn't found yet; return ok=false.
 		return *new(V), false
 	}
-
-	// define the relationship between the two slices in a docstring in node
-	// Because of the first loop, i is the first index where key <= n.keys[i]
-	// (it could also be len(n.keys)), so using the key ordering invariant we
-	// recurse into children[i]
 	return bt.getFromNode(key, n.children[i])
 }
 
@@ -191,3 +185,5 @@ func (bt *BTree[K, V]) nodeIsFull(n *node[K, V]) bool {
 func (bt *BTree[K, V]) nodeKeyCmp(a, b nodeKey[K, V]) int {
 	return bt.cmp(a.key, b.key)
 }
+
+// TODO: add deletion
