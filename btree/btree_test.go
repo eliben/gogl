@@ -1,8 +1,10 @@
 package btree
 
 import (
+	"log"
 	"math/rand/v2"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +101,66 @@ func TestLargeSequential(t *testing.T) {
 	for i := 1; i < 350; i++ {
 		checkFound(t, bt, i, strconv.Itoa(i))
 	}
+}
+
+func TestLargeStrings(t *testing.T) {
+	s1 := rand.Uint64()
+	s2 := rand.Uint64()
+	log.Println("TestLargeSequential seed:", s1, s2)
+	rnd := rand.New(rand.NewPCG(s1, s2))
+
+	// New tree with default t
+	bt := New[string, int](strings.Compare)
+
+	// Create a map of string->serial number we'll be using for insertion and
+	// later for comparison. The strings are not guaranteed unique, but that's ok,
+	// since only the last instance will count for mp.
+	N := 20000
+	strs := make([]string, 0, N)
+	for range N {
+		strs = append(strs, randString(rnd, 5))
+	}
+
+	// mp keeps a stable mapping of string-->int
+	// in the test we keep shuffling strs, but mp remains the same.
+	mp := make(map[string]int)
+	for i, s := range strs {
+		mp[s] = i
+	}
+
+	// Insert all keys in some shuffled order.
+	rand.Shuffle(len(strs), func(i, j int) {
+		strs[i], strs[j] = strs[j], strs[i]
+	})
+	for i := 0; i < len(strs); i++ {
+		bt.Insert(strs[i], mp[strs[i]])
+	}
+
+	// Shuffle again and Get all strings in the shuffled order
+	rand.Shuffle(len(strs), func(i, j int) {
+		strs[i], strs[j] = strs[j], strs[i]
+	})
+	for i := 0; i < len(strs); i++ {
+		v, ok := bt.Get(strs[i])
+		if !ok || v != mp[strs[i]] {
+			t.Errorf("not found or wrong value, got %v, want %v", v, mp[strs[i]])
+		}
+	}
+}
+
+// randString generates a random string made from lowercase chars with minimal
+// length minLen; it uses rnd as the RNG state.
+func randString(rnd *rand.Rand, minLen int) string {
+	var rr []rune
+	for i := 0; i < minLen; i++ {
+		rr = append(rr, 'a'+rune(rnd.IntN(26)))
+	}
+
+	// Add more letters with p=0.8
+	for rnd.IntN(5) <= 3 {
+		rr = append(rr, 'a'+rune(rnd.IntN(26)))
+	}
+	return string(rr)
 }
 
 // insertNumbersUpto inserts numbers [1...upto] (inclusive) into bt into
