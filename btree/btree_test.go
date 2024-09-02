@@ -1,7 +1,6 @@
 package btree
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -21,5 +20,5 @@ func TestBasic(t *testing.T) {
 	bt.Insert(9, "nine")
 	bt.Insert(21, "twentyone")
 
-	fmt.Println(bt.renderDot())
+	bt.renderDotToImage("bt.png")
 }
