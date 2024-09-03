@@ -406,6 +406,6 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 			bt.root = mergedNode
 		}
 	} else {
-		bt.rebalance(parent, path[:len(path)])
+		bt.rebalance(parent, path[:len(path)-1])
 	}
 }

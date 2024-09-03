@@ -58,7 +58,18 @@ func checkNotFound(t *testing.T, bt *BTree[int, string], key int) {
 	}
 }
 
+func checkEmpty[K, V any](t *testing.T, bt *BTree[K, V]) {
+	t.Helper()
+	if !bt.root.leaf {
+		t.Errorf("got leaf=true, want empty tree")
+	}
+	if len(bt.root.children) > 0 || len(bt.root.keys) > 0 {
+		t.Errorf("got len(keys)=%d, len(children)=%d, want empty tree", len(bt.root.keys), len(bt.root.children))
+	}
+}
+
 func checkVerify[K, V any](t *testing.T, bt *BTree[K, V]) {
+	t.Helper()
 	if err := bt.verify(); err != nil {
 		t.Error(err)
 	}
@@ -108,13 +119,9 @@ func TestManualSmall(t *testing.T) {
 func TestLargeSequential(t *testing.T) {
 	// Insert a large number of nodes
 	bt := NewWithTee[int, string](intCmp, 4)
-
-	insertNumbersUpto(bt, 350)
-	checkVerify(t, bt)
-
-	for i := 1; i < 350; i++ {
-		checkFound(t, bt, i, strconv.Itoa(i))
-	}
+	h := newHarness(t, bt)
+	insertNumbersUpto(h, 350)
+	h.check()
 }
 
 func TestLargeStrings(t *testing.T) {
@@ -167,6 +174,8 @@ func TestLargeStrings(t *testing.T) {
 // insert/del operations into a map and for each one runs verification on the
 // btree and ensures that all keys that are supposed to be in it are found
 // successfully.
+// Note that this means quadratic behavior for trees with many insertions.
+// Use insertNoCheck and call check manually if needed.
 type btHarness struct {
 	t  *testing.T
 	bt *BTree[int, string]
@@ -182,10 +191,14 @@ func newHarness(t *testing.T, bt *BTree[int, string]) *btHarness {
 }
 
 func (bh *btHarness) insert(k int) {
+	bh.insertNoCheck(k)
+	bh.check()
+}
+
+func (bh *btHarness) insertNoCheck(k int) {
 	v := strconv.Itoa(k)
 	bh.bt.Insert(k, v)
 	bh.m[k] = v
-	bh.check()
 }
 
 func (bh *btHarness) del(k int) {
@@ -239,7 +252,7 @@ func TestManualDeletionLeavesOnly(t *testing.T) {
 	//bt.renderDotToImage("after.png")
 }
 
-func TestDeleteAll(t *testing.T) {
+func TestDeleteAllSmall(t *testing.T) {
 	bt := NewWithTee[int, string](intCmp, 4)
 	h := newHarness(t, bt)
 	h.insert(1)
@@ -251,11 +264,25 @@ func TestDeleteAll(t *testing.T) {
 	h.del(2)
 	h.del(9)
 	h.del(4)
+	checkEmpty(t, bt)
 
 	h.insert(3)
 	h.insert(7)
 	checkNotFound(t, bt, 1)
 	checkNotFound(t, bt, 2)
+}
+
+func TestDeleteAllLarge(t *testing.T) {
+	bt := NewWithTee[int, string](intCmp, 4)
+	h := newHarness(t, bt)
+	insertNumbersUpto(h, 350)
+
+	// Now delete all keys! This will involve lots of leaf and internal node
+	// deletions.
+	for i := 1; i <= 350; i++ {
+		h.del(i)
+	}
+	checkEmpty(t, bt)
 }
 
 // randString generates a random string made from lowercase chars with minimal
@@ -273,9 +300,9 @@ func randString(rnd *rand.Rand, minLen int) string {
 	return string(rr)
 }
 
-// insertNumbersUpto inserts numbers [1...upto] (inclusive) into bt into
+// insertNumbersUpto inserts numbers [1...upto] (inclusive) into a harness into
 // a predetermined shuffled order.
-func insertNumbersUpto(bt *BTree[int, string], upto int) {
+func insertNumbersUpto(h *btHarness, upto int) {
 	rnd := rand.New(rand.NewPCG(9999, 404040))
 
 	s := make([]int, upto)
@@ -287,6 +314,6 @@ func insertNumbersUpto(bt *BTree[int, string], upto int) {
 	})
 
 	for _, num := range s {
-		bt.Insert(num, strconv.Itoa(num))
+		h.insertNoCheck(num)
 	}
 }

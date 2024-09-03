@@ -80,5 +80,10 @@ func (bt *BTree[K, V]) verifyNode(n *node[K, V]) error {
 		}
 	}
 
+	noChildren := len(n.children) == 0
+	if noChildren != n.leaf {
+		return fmt.Errorf("node %p: leaf=%v, len(children)=%d", n, n.leaf, len(n.children))
+	}
+
 	return nil
 }
