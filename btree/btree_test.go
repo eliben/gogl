@@ -13,7 +13,7 @@ func intCmp(a, b int) int {
 }
 
 func TestRenderDot(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	bt := NewWithTee[int, string](intCmp, 4)
 	bt.Insert(2, "two")
@@ -32,7 +32,11 @@ func TestRenderDot(t *testing.T) {
 	bt.Insert(23, "23")
 	bt.Insert(24, "24")
 	bt.Insert(25, "21")
-	bt.renderDotToImage("bt.png")
+	//bt.renderDotToImage("bt.png")
+	//fmt.Println(bt.findNodeForDeletion(bt.root, 21, nil))
+
+	bt.Delete(1)
+	bt.renderDotToImage("bt2.png")
 }
 
 func checkFound(t *testing.T, bt *BTree[int, string], key int, val string) {

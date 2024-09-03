@@ -81,6 +81,21 @@ func (bt *BTree[K, V]) Insert(key K, value V) {
 	bt.insertNonFull(bt.root, nodeKey[K, V]{key: key, value: value})
 }
 
+// Delete deletes a key and its associated value from the tree. If key
+// is not found in the tree, Delete is a no-op.
+func (bt *BTree[K, V]) Delete(key K) {
+	var emptyPath treePath[K, V]
+	n, idx, path := bt.findNodeForDeletion(bt.root, key, emptyPath)
+
+	if n.leaf {
+		n.keys = slices.Delete(n.keys, idx, idx+1)
+	} else {
+		panic("don't support deleting from internal nodes yet")
+	}
+
+	bt.rebalance(n, path)
+}
+
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 	kv := nodeKey[K, V]{key: key}
 	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
@@ -185,8 +200,6 @@ func (bt *BTree[K, V]) nodeKeyCmp(a, b nodeKey[K, V]) int {
 	return bt.cmp(a.key, b.key)
 }
 
-// TODO: add deletion
-
 // nodesPreOrder returns an iterator over the nodes of bt in pre-order.
 func (bt *BTree[K, V]) nodesPreOrder() iter.Seq[*node[K, V]] {
 	return func(yield func(*node[K, V]) bool) {
@@ -194,6 +207,7 @@ func (bt *BTree[K, V]) nodesPreOrder() iter.Seq[*node[K, V]] {
 	}
 }
 
+// pushPreOrder is a recursive push iterator helper for nodesPreorder.
 func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V]) bool {
 	if !yield(n) {
 		return false
@@ -204,4 +218,153 @@ func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V])
 		}
 	}
 	return true
+}
+
+// treePath represents a path taken in the tree to get to a specific node.
+// If we're currently in node c, we can find its parents and siblings: c is
+// implicitly on the top of the path stack. For every node c at stack[j],
+// its parent is stack[j-1].parent and c is in that parent's children at
+// index stack[j-1].childIndex
+type treePath[K, V any] []pathPart[K, V]
+
+// last returns the destructured last element in the path. It panics if
+// the path is empty.
+func (tp treePath[K, V]) last() (*node[K, V], int) {
+	lp := tp[len(tp)-1]
+	return lp.parent, lp.childIndex
+}
+
+type pathPart[K, V any] struct {
+	parent     *node[K, V]
+	childIndex int
+}
+
+// findNodeForDeletion finds the node that holds key K, starting at n.
+// It returns the found node along with the index of the found key and the
+// node's treePath (that doesn't include the node itself). If the key isn't
+// found in n or its descendants, the first returned value is nil.
+func (bt *BTree[K, V]) findNodeForDeletion(n *node[K, V], key K, path treePath[K, V]) (*node[K, V], int, treePath[K, V]) {
+	kv := nodeKey[K, V]{key: key}
+	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
+
+	// * If the binary search finds the exact key, we return this node and the
+	//   found index.
+	// * If the exact key wasn't found:
+	//   * If it's a leaf node, the search failed.
+	//   * Otherwise, i tells us where to recurse into n's children.
+	if ok {
+		return n, i, path
+	}
+	if n.leaf {
+		return nil, 0, nil
+	}
+
+	newPath := append(path, pathPart[K, V]{
+		parent:     n,
+		childIndex: i,
+	})
+	return bt.findNodeForDeletion(n.children[i], key, newPath)
+}
+
+// rebalance performs B-Tree rebalancing when n doesn't have enough keys after
+// deletion.
+//
+// It currently follows the Deletion algorithm described on Wikipedia.
+func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
+	// TODO: handle the case of n=root
+	if len(n.keys) >= bt.tee-1 {
+		return
+	}
+
+	parent, childIndex := path.last()
+	var rightSibling, leftSibling *node[K, V]
+	if len(parent.children) > childIndex+1 {
+		rightSibling = parent.children[childIndex+1]
+	}
+	if childIndex > 0 {
+		leftSibling = parent.children[childIndex-1]
+	}
+
+	// If n's right sibling exists and has enough elements (at least the minimum
+	// plus one), rotate left.
+	if rightSibling != nil && len(rightSibling.keys) >= bt.tee {
+		// 1. Copy the separator from the parent to the end of n
+		n.keys = append(n.keys, parent.keys[childIndex])
+
+		// 2. Replace the separator in the parent with the first key of the
+		//    right sibling.
+		parent.keys[childIndex] = rightSibling.keys[0]
+
+		// ... move the child pointer from the sibling to n
+		n.children = append(n.children, rightSibling.children[0])
+		rightSibling.children = rightSibling.children[1:]
+
+		// 3. The tree is now balanced
+		return
+	}
+
+	// Otherwise, if n's left sibling exists and has enough elements (at least
+	// the minimum plus one), rotate right.
+	if leftSibling != nil && len(leftSibling.keys) >= bt.tee {
+		// 1. Copy the separator from the parent to the start of n
+		n.keys = slices.Insert(n.keys, 0, parent.keys[childIndex-1])
+
+		// 2. Replace the separator in the parent with the last key of the
+		//    left sibling.
+		parent.keys[childIndex-1] = leftSibling.keys[len(leftSibling.keys)-1]
+
+		// ... move the child pointer from the sibling to n
+		n.children = slices.Insert(n.children, 0, leftSibling.children[len(leftSibling.children)-1])
+		leftSibling.children = leftSibling.children[len(leftSibling.children)-1:]
+
+		// 3. The tree is now balanced
+		return
+	}
+
+	// Otherwise, if both siblings have the only the minimum number of elements,
+	// then merge with a sibling sandwiching their separator taken off from their
+	// parent.
+	// Both the n and the sibling have at most tee-1 elements each, so we can
+	// safely merge them along with the separator into a single node with no
+	// more than 2*tee-1 keys.
+	var mergedNode *node[K, V]
+	if leftSibling == nil {
+		// Merge rightSibling into n
+
+		// 1. Copy the separator to the end of the left node.
+		n.keys = append(n.keys, parent.keys[childIndex])
+
+		// 2. Move all elements from the right node to the left node.
+		n.keys = append(n.keys, rightSibling.keys...)
+		n.children = append(n.children, rightSibling.children...)
+
+		// 3. Remove the separator from the parent along with its empty right
+		//    child.
+		parent.keys = slices.Delete(parent.keys, childIndex, childIndex+1)
+		parent.children = slices.Delete(parent.children, childIndex+1, childIndex+2)
+		mergedNode = n
+	} else {
+		// Merge n into leftSibling
+
+		// 1. Copy the separator to the end of the left node.
+		leftSibling.keys = append(leftSibling.keys, parent.keys[childIndex-1])
+
+		// 2. Move all elements from the right node to the left node.
+		leftSibling.keys = append(leftSibling.keys, n.keys...)
+		leftSibling.children = append(leftSibling.children, n.children...)
+
+		// 3. Remove the separator from the parent along with its empty right
+		//    child.
+		parent.keys = slices.Delete(parent.keys, childIndex-1, childIndex)
+		parent.children = slices.Delete(parent.children, childIndex, childIndex+1)
+		mergedNode = leftSibling
+	}
+
+	if parent == bt.root && len(parent.keys) == 0 {
+		// If the parent is the root and now has no elements, then free it and
+		// make the merged node the new root.
+		bt.root = mergedNode
+	} else {
+		bt.rebalance(parent, path[:len(path)])
+	}
 }
