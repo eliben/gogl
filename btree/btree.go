@@ -19,14 +19,16 @@ type BTree[K, V any] struct {
 
 const defaultTee = 10
 
+// node is a node in the BTree.
+//
+// Key ordering invariants (defining n=len(keys)):
+//
+// keys[i].key <= keys[i+1].key for each i in 0..n-2
+//
+// There are n+1 elements in children (0..n)
+// if kj is any key in children[j], then:  keys[j-1].key <= kj <= keys[j].key
+// Boundaries: k0 <= keys[0].key   and   keys[n-1].key <= kn
 type node[K, V any] struct {
-	// Key ordering invariants (defining n=len(keys)):
-	//
-	// keys[i].key <= keys[i+1].key for each i in 0..n-2
-	//
-	// There are n+1 elements in children (0..n)
-	// if kj is any key in children[j], then:  keys[j-1].key <= kj <= keys[j].key
-	// Boundaries: k0 <= keys[0].key   and   keys[n-1].key <= kn
 	keys     []nodeKey[K, V]
 	children []*node[K, V]
 	leaf     bool
@@ -187,9 +189,6 @@ func (bt *BTree[K, V]) nodeKeyCmp(a, b nodeKey[K, V]) int {
 	return bt.cmp(a.key, b.key)
 }
 
-// TODO: add "verify" method that verifies all invariants: min/max number
-// of keys per node, num keys vs. num children, height, and ordering invariants
-// of each node. use it in tests
 // TODO: add deletion
 
 // nodesPreOrder returns an iterator over the nodes of bt in pre-order.
