@@ -54,6 +54,12 @@ func checkNotFound(t *testing.T, bt *BTree[int, string], key int) {
 	}
 }
 
+func checkVerify[K, V any](t *testing.T, bt *BTree[K, V]) {
+	if err := bt.verify(); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestManualSmall(t *testing.T) {
 	// Manually insert and get some nodes from a tree with t=4
 	bt := NewWithTee[int, string](intCmp, 4)
@@ -91,6 +97,8 @@ func TestManualSmall(t *testing.T) {
 
 	checkFound(t, bt, 9, "99")
 	checkFound(t, bt, 2, "22")
+
+	checkVerify(t, bt)
 }
 
 func TestLargeSequential(t *testing.T) {
@@ -98,6 +106,8 @@ func TestLargeSequential(t *testing.T) {
 	bt := NewWithTee[int, string](intCmp, 4)
 
 	insertNumbersUpto(bt, 350)
+	checkVerify(t, bt)
+
 	for i := 1; i < 350; i++ {
 		checkFound(t, bt, i, strconv.Itoa(i))
 	}
@@ -135,6 +145,7 @@ func TestLargeStrings(t *testing.T) {
 	for i := 0; i < len(strs); i++ {
 		bt.Insert(strs[i], mp[strs[i]])
 	}
+	checkVerify(t, bt)
 
 	// Shuffle again and Get all strings in the shuffled order
 	rand.Shuffle(len(strs), func(i, j int) {
