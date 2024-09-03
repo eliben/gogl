@@ -294,10 +294,13 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 		// 2. Replace the separator in the parent with the first key of the
 		//    right sibling.
 		parent.keys[childIndex] = rightSibling.keys[0]
+		rightSibling.keys = rightSibling.keys[1:]
 
-		// ... move the child pointer from the sibling to n
-		n.children = append(n.children, rightSibling.children[0])
-		rightSibling.children = rightSibling.children[1:]
+		// ... for internal nodes, move the child pointer from the sibling to n
+		if !n.leaf {
+			n.children = append(n.children, rightSibling.children[0])
+			rightSibling.children = rightSibling.children[1:]
+		}
 
 		// 3. The tree is now balanced
 		return
@@ -312,10 +315,13 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 		// 2. Replace the separator in the parent with the last key of the
 		//    left sibling.
 		parent.keys[childIndex-1] = leftSibling.keys[len(leftSibling.keys)-1]
+		leftSibling.keys = leftSibling.keys[:len(leftSibling.keys)-1]
 
-		// ... move the child pointer from the sibling to n
-		n.children = slices.Insert(n.children, 0, leftSibling.children[len(leftSibling.children)-1])
-		leftSibling.children = leftSibling.children[len(leftSibling.children)-1:]
+		// ... for internal nodes, move the child pointer from the sibling to n
+		if !n.leaf {
+			n.children = slices.Insert(n.children, 0, leftSibling.children[len(leftSibling.children)-1])
+			leftSibling.children = leftSibling.children[len(leftSibling.children)-1:]
+		}
 
 		// 3. The tree is now balanced
 		return
@@ -336,7 +342,9 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 
 		// 2. Move all elements from the right node to the left node.
 		n.keys = append(n.keys, rightSibling.keys...)
-		n.children = append(n.children, rightSibling.children...)
+		if !n.leaf {
+			n.children = append(n.children, rightSibling.children...)
+		}
 
 		// 3. Remove the separator from the parent along with its empty right
 		//    child.
@@ -351,7 +359,9 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 
 		// 2. Move all elements from the right node to the left node.
 		leftSibling.keys = append(leftSibling.keys, n.keys...)
-		leftSibling.children = append(leftSibling.children, n.children...)
+		if !n.leaf {
+			leftSibling.children = append(leftSibling.children, n.children...)
+		}
 
 		// 3. Remove the separator from the parent along with its empty right
 		//    child.

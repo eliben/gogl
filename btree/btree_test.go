@@ -13,7 +13,7 @@ func intCmp(a, b int) int {
 }
 
 func TestRenderDot(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	bt := NewWithTee[int, string](intCmp, 4)
 	bt.Insert(2, "two")
@@ -161,6 +161,46 @@ func TestLargeStrings(t *testing.T) {
 			t.Errorf("not found or wrong value, got %v, want %v", v, mp[strs[i]])
 		}
 	}
+}
+
+func TestManualDeletion(t *testing.T) {
+	bt := NewWithTee[int, string](intCmp, 4)
+
+	for i := range 10 {
+		bt.Insert(i*10, strconv.Itoa(i))
+	}
+	for i := range 10 {
+		bt.Insert(i*10+1, strconv.Itoa(i))
+		bt.Insert(i*10+2, strconv.Itoa(i))
+	}
+
+	checkVerify(t, bt)
+	//bt.renderDotToImage("mn1.png")
+
+	// Delete from leaf that has more than minimal: no rotation required
+	bt.Delete(22)
+	checkVerify(t, bt)
+
+	// Delete from leaf that has a right sibling with enough elements to rotate
+	// one key.
+	bt.Delete(62)
+	checkVerify(t, bt)
+
+	// Delete from leaf that has a left sibling with enough elements to rotate
+	// one key.
+	bt.Delete(31)
+	bt.Delete(32)
+	checkVerify(t, bt)
+
+	// Merge with right sibling
+	bt.Delete(1)
+	checkVerify(t, bt)
+
+	// Merge with left sibling
+	bt.renderDotToImage("mn1.png")
+	bt.Delete(52)
+	checkVerify(t, bt)
+	bt.renderDotToImage("mn2.png")
 }
 
 // randString generates a random string made from lowercase chars with minimal
