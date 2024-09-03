@@ -3,7 +3,6 @@ package btree
 import (
 	"log"
 	"math/rand/v2"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -164,71 +163,99 @@ func TestLargeStrings(t *testing.T) {
 	}
 }
 
+// btHarness is a test harness for BTree[int, string] tests. It mirrors the
+// insert/del operations into a map and for each one runs verification on the
+// btree and ensures that all keys that are supposed to be in it are found
+// successfully.
+type btHarness struct {
+	t  *testing.T
+	bt *BTree[int, string]
+	m  map[int]string
+}
+
+func newHarness(t *testing.T, bt *BTree[int, string]) *btHarness {
+	return &btHarness{
+		t:  t,
+		bt: bt,
+		m:  make(map[int]string),
+	}
+}
+
+func (bh *btHarness) insert(k int) {
+	v := strconv.Itoa(k)
+	bh.bt.Insert(k, v)
+	bh.m[k] = v
+	bh.check()
+}
+
+func (bh *btHarness) del(k int) {
+	bh.bt.Delete(k)
+	delete(bh.m, k)
+	bh.check()
+}
+
+func (bh *btHarness) check() {
+	checkVerify(bh.t, bh.bt)
+	for k, v := range bh.m {
+		checkFound(bh.t, bh.bt, k, v)
+	}
+}
+
 func TestManualDeletionLeavesOnly(t *testing.T) {
 	bt := NewWithTee[int, string](intCmp, 4)
-
-	var keys []int
-	var dels []int
-
-	doDelete := func(k int) {
-		dels = append(dels, k)
-		bt.Delete(k)
-	}
-
-	checkFindAll := func() {
-		for _, k := range keys {
-			// Make sure that keys that weren't deleted are still found in the tree,
-			// and the keys that were deleted are not.
-			if slices.Index(dels, k) >= 0 {
-				checkNotFound(t, bt, k)
-			} else {
-				checkFound(t, bt, k, strconv.Itoa(k))
-			}
-		}
-	}
+	h := newHarness(t, bt)
 
 	for i := range 10 {
-		bt.Insert(i*10, strconv.Itoa(i*10))
-		keys = append(keys, i*10)
+		h.insert(i * 10)
 	}
 	for i := range 10 {
-		bt.Insert(i*10+1, strconv.Itoa(i*10+1))
-		bt.Insert(i*10+2, strconv.Itoa(i*10+2))
-		keys = append(keys, i*10+1, i*10+2)
+		h.insert(i*10 + 1)
+		h.insert(i*10 + 2)
 	}
-
-	checkVerify(t, bt)
 
 	// Delete from leaf that has more than minimal: no rotation required
-	doDelete(22)
-	checkVerify(t, bt)
-	checkFindAll()
+	h.del(22)
 
 	// Delete from leaf that has a right sibling with enough elements to rotate
 	// one key.
-	doDelete(62)
-	checkVerify(t, bt)
-	checkFindAll()
+	h.del(62)
 
 	// Delete from leaf that has a left sibling with enough elements to rotate
 	// one key.
-	doDelete(31)
-	doDelete(32)
-	checkVerify(t, bt)
-	checkFindAll()
+	h.del(31)
+	h.del(32)
 
 	// Merge with right sibling
-	doDelete(1)
-	checkVerify(t, bt)
-	checkFindAll()
+	h.del(1)
 
 	// Merge with left sibling
-	doDelete(52)
-	checkVerify(t, bt)
-	checkFindAll()
+	h.del(52)
 
+	// These should be safe no-ops
+	for i := 100; i < 200; i++ {
+		h.del(i)
+	}
 	//bt.renderDotToImage("before.png")
 	//bt.renderDotToImage("after.png")
+}
+
+func TestDeleteAll(t *testing.T) {
+	bt := NewWithTee[int, string](intCmp, 4)
+	h := newHarness(t, bt)
+	h.insert(1)
+	h.insert(4)
+	h.insert(9)
+	h.insert(2)
+
+	h.del(1)
+	h.del(2)
+	h.del(9)
+	h.del(4)
+
+	h.insert(3)
+	h.insert(7)
+	checkNotFound(t, bt, 1)
+	checkNotFound(t, bt, 2)
 }
 
 // randString generates a random string made from lowercase chars with minimal

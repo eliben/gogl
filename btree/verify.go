@@ -52,10 +52,6 @@ func (bt *BTree[K, V]) verifyNode(n *node[K, V]) error {
 		return fmt.Errorf("node %p: has too few keys: %d", n, len(n.keys))
 	}
 
-	if n == bt.root && len(n.keys) < 1 {
-		return fmt.Errorf("node %p: root has 0 keys", n)
-	}
-
 	if !slices.IsSortedFunc(n.keys, bt.nodeKeyCmp) {
 		return fmt.Errorf("node %p: keys not sorted", n)
 	}

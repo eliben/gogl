@@ -90,12 +90,24 @@ func (bt *BTree[K, V]) Delete(key K) {
 	if n == nil {
 		return
 	} else if n.leaf {
+		// Deletion from a leaf.
 		n.keys = slices.Delete(n.keys, idx, idx+1)
 	} else {
-		panic("don't support deleting from internal nodes yet")
+		// Deletion from an internal node.
+		// n.keys[idx] is the key we want to replace; find the rightmost descendant
+		// in the left subtree of this key, and swap its largest key for n.keys[idx]
+		pathWithn := append(path, pathPart[K, V]{parent: n, childIndex: idx})
+		d, dpath := bt.rightmostDescendant(n.children[idx], pathWithn)
+		n.keys[idx] = d.keys[len(d.keys)-1]
+		d.keys = d.keys[:len(d.keys)-1]
+
+		// Set n and path for rebalancing.
+		n, path = d, dpath
 	}
 
-	bt.rebalance(n, path)
+	if n != bt.root {
+		bt.rebalance(n, path)
+	}
 }
 
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
@@ -236,6 +248,8 @@ func (tp treePath[K, V]) last() (*node[K, V], int) {
 	return lp.parent, lp.childIndex
 }
 
+// TODO: have add() and pop() methods here and use them
+
 type pathPart[K, V any] struct {
 	parent     *node[K, V]
 	childIndex int
@@ -268,12 +282,25 @@ func (bt *BTree[K, V]) findNodeForDeletion(n *node[K, V], key K, path treePath[K
 	return bt.findNodeForDeletion(n.children[i], key, newPath)
 }
 
+func (bt *BTree[K, V]) rightmostDescendant(n *node[K, V], path treePath[K, V]) (*node[K, V], treePath[K, V]) {
+	if n.leaf {
+		return n, path
+	}
+
+	last := len(n.children) - 1
+	return bt.rightmostDescendant(n.children[last], append(path, pathPart[K, V]{parent: n, childIndex: last}))
+}
+
 // rebalance performs B-Tree rebalancing when n doesn't have enough keys after
 // deletion.
 //
 // It currently follows the Deletion algorithm described on Wikipedia.
 func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
-	// TODO: handle the case of n=root
+	if n == bt.root {
+		panic("rebalance on root")
+	}
+
+	// We only rebalance if n's key count falls below the minimum.
 	if len(n.keys) >= bt.tee-1 {
 		return
 	}
@@ -372,10 +399,12 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 		mergedNode = leftSibling
 	}
 
-	if parent == bt.root && len(parent.keys) == 0 {
-		// If the parent is the root and now has no elements, then free it and
-		// make the merged node the new root.
-		bt.root = mergedNode
+	if parent == bt.root {
+		if len(parent.keys) == 0 {
+			// If the parent is the root and now has no elements, then free it and
+			// make the merged node the new root.
+			bt.root = mergedNode
+		}
 	} else {
 		bt.rebalance(parent, path[:len(path)])
 	}
