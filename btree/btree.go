@@ -87,7 +87,9 @@ func (bt *BTree[K, V]) Delete(key K) {
 	var emptyPath treePath[K, V]
 	n, idx, path := bt.findNodeForDeletion(bt.root, key, emptyPath)
 
-	if n.leaf {
+	if n == nil {
+		return
+	} else if n.leaf {
 		n.keys = slices.Delete(n.keys, idx, idx+1)
 	} else {
 		panic("don't support deleting from internal nodes yet")

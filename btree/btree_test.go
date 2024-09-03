@@ -175,6 +175,18 @@ func TestManualDeletionLeavesOnly(t *testing.T) {
 		bt.Delete(k)
 	}
 
+	checkFindAll := func() {
+		for _, k := range keys {
+			// Make sure that keys that weren't deleted are still found in the tree,
+			// and the keys that were deleted are not.
+			if slices.Index(dels, k) >= 0 {
+				checkNotFound(t, bt, k)
+			} else {
+				checkFound(t, bt, k, strconv.Itoa(k))
+			}
+		}
+	}
+
 	for i := range 10 {
 		bt.Insert(i*10, strconv.Itoa(i*10))
 		keys = append(keys, i*10)
@@ -190,35 +202,33 @@ func TestManualDeletionLeavesOnly(t *testing.T) {
 	// Delete from leaf that has more than minimal: no rotation required
 	doDelete(22)
 	checkVerify(t, bt)
+	checkFindAll()
 
 	// Delete from leaf that has a right sibling with enough elements to rotate
 	// one key.
 	doDelete(62)
 	checkVerify(t, bt)
+	checkFindAll()
 
 	// Delete from leaf that has a left sibling with enough elements to rotate
 	// one key.
 	doDelete(31)
 	doDelete(32)
 	checkVerify(t, bt)
+	checkFindAll()
 
 	// Merge with right sibling
 	doDelete(1)
 	checkVerify(t, bt)
+	checkFindAll()
 
 	// Merge with left sibling
 	doDelete(52)
 	checkVerify(t, bt)
+	checkFindAll()
 
-	for _, k := range keys {
-		// Make sure that keys that weren't deleted are still found in the tree,
-		// and the keys that were deleted are not.
-		if slices.Index(dels, k) >= 0 {
-			checkNotFound(t, bt, k)
-		} else {
-			checkFound(t, bt, k, strconv.Itoa(k))
-		}
-	}
+	//bt.renderDotToImage("before.png")
+	//bt.renderDotToImage("after.png")
 }
 
 // randString generates a random string made from lowercase chars with minimal
