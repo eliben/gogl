@@ -2,6 +2,7 @@ package btree
 
 import (
 	"fmt"
+	"iter"
 	"slices"
 )
 
@@ -186,4 +187,26 @@ func (bt *BTree[K, V]) nodeKeyCmp(a, b nodeKey[K, V]) int {
 	return bt.cmp(a.key, b.key)
 }
 
+// TODO: add "verify" method that verifies all invariants: min/max number
+// of keys per node, num keys vs. num children, height, and ordering invariants
+// of each node. use it in tests
 // TODO: add deletion
+
+// nodesPreOrder returns an iterator over the nodes of bt in pre-order.
+func (bt *BTree[K, V]) nodesPreOrder() iter.Seq[*node[K, V]] {
+	return func(yield func(*node[K, V]) bool) {
+		bt.pushPreOrder(yield, bt.root)
+	}
+}
+
+func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V]) bool {
+	if !yield(n) {
+		return false
+	}
+	for _, c := range n.children {
+		if !bt.pushPreOrder(yield, c) {
+			return false
+		}
+	}
+	return true
+}

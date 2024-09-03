@@ -2,7 +2,6 @@ package btree
 
 import (
 	"fmt"
-	"iter"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -77,23 +76,4 @@ func (bt *BTree[K, V]) renderDot() string {
 	sb.WriteString("}\n")
 
 	return sb.String()
-}
-
-// nodesPreOrder returns an iterator over the nodes of bt in pre-order.
-func (bt *BTree[K, V]) nodesPreOrder() iter.Seq[*node[K, V]] {
-	return func(yield func(*node[K, V]) bool) {
-		bt.pushPreOrder(yield, bt.root)
-	}
-}
-
-func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V]) bool {
-	if !yield(n) {
-		return false
-	}
-	for _, c := range n.children {
-		if !bt.pushPreOrder(yield, c) {
-			return false
-		}
-	}
-	return true
 }
