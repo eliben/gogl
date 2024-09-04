@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"strings"
 )
 
 type BTree[K, V any] struct {
@@ -108,6 +109,43 @@ func (bt *BTree[K, V]) Delete(key K) {
 	if n != bt.root {
 		bt.rebalance(n, path)
 	}
+}
+
+// Stats returns a string with statistics about this B-Tree: total number of
+// keys, nodes, leaf nodes etc.
+func (bt *BTree[K, V]) Stats() string {
+	leafHeight := 0
+	totalKeys := 0
+	totalNodes := 0
+	leafNodes := 0
+	totalKeysInLeaves := 0
+
+	var visit func(n *node[K, V], h int)
+	visit = func(n *node[K, V], h int) {
+		totalNodes++
+		totalKeys += len(n.keys)
+
+		if n.leaf {
+			leafHeight = h
+			leafNodes++
+			totalKeysInLeaves += len(n.keys)
+			return
+		}
+
+		for _, c := range n.children {
+			visit(c, h+1)
+		}
+	}
+	visit(bt.root, 0)
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Nodes: %d\n", totalNodes)
+	fmt.Fprintf(&sb, "Leaf nodes: %d\n", leafNodes)
+	fmt.Fprintf(&sb, "Leaf height: %d\n", leafHeight)
+	fmt.Fprintf(&sb, "Keys: %d\n", totalKeys)
+	fmt.Fprintf(&sb, "Keys in leaves: %d\n", totalKeysInLeaves)
+	fmt.Fprintf(&sb, "Average keys per node: %.2f\n", float64(totalKeys)/float64(totalNodes))
+	return sb.String()
 }
 
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {

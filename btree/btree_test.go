@@ -114,28 +114,42 @@ func TestManualSmall(t *testing.T) {
 	checkFound(t, bt, 2, "22")
 
 	checkVerify(t, bt)
+
+	// Smoke test stats printing
+	stats := bt.Stats()
+	if strings.Index(stats, "Keys") < 0 {
+		t.Errorf("got bad stats:\n%s\n", stats)
+	}
+}
+
+// makeLoggedRand creates a new rand.Rand with a random source, and logs the
+// source to output so the test can be reproduced if needed.
+func makeLoggedRand(t *testing.T) *rand.Rand {
+	s1, s2 := rand.Uint64(), rand.Uint64()
+	log.Printf("%s seed: %v, %v", t.Name(), s1, s2)
+	return rand.New(rand.NewPCG(s1, s2))
 }
 
 func TestLargeSequential(t *testing.T) {
+	rnd := makeLoggedRand(t)
 	// Insert a large number of nodes
 	bt := NewWithTee[int, string](intCmp, 4)
 	h := newHarness(t, bt)
-	insertNumbersUpto(h, 350)
+	insertNumbersUpto(rnd, h, 350)
 	h.check()
 }
 
 func TestLargeStrings(t *testing.T) {
-	s1 := rand.Uint64()
-	s2 := rand.Uint64()
-	log.Println("TestLargeSequential seed:", s1, s2)
-	rnd := rand.New(rand.NewPCG(s1, s2))
+	rnd := makeLoggedRand(t)
 
-	// New tree with default t
+	// New tree with default tee
 	bt := New[string, int](strings.Compare)
 
 	// Create a map of string->serial number we'll be using for insertion and
 	// later for comparison. The strings are not guaranteed unique, but that's ok,
 	// since only the last instance will count for mp.
+	// We don't use the harness here because the types (just for this test) are
+	// different.
 	N := 20000
 	strs := make([]string, 0, N)
 	for range N {
@@ -273,9 +287,10 @@ func TestDeleteAllSmall(t *testing.T) {
 }
 
 func TestDeleteAllLarge(t *testing.T) {
+	rnd := makeLoggedRand(t)
 	bt := NewWithTee[int, string](intCmp, 4)
 	h := newHarness(t, bt)
-	insertNumbersUpto(h, 350)
+	insertNumbersUpto(rnd, h, 350)
 
 	// Now delete all keys! This will involve lots of leaf and internal node
 	// deletions.
@@ -284,6 +299,9 @@ func TestDeleteAllLarge(t *testing.T) {
 	}
 	checkEmpty(t, bt)
 }
+
+// TODO: test coverage not great here... no deletions from internal nodes?
+// need to re-run tests with multiple deletion orders
 
 // randString generates a random string made from lowercase chars with minimal
 // length minLen; it uses rnd as the RNG state.
@@ -301,10 +319,8 @@ func randString(rnd *rand.Rand, minLen int) string {
 }
 
 // insertNumbersUpto inserts numbers [1...upto] (inclusive) into a harness into
-// a predetermined shuffled order.
-func insertNumbersUpto(h *btHarness, upto int) {
-	rnd := rand.New(rand.NewPCG(9999, 404040))
-
+// a random shuffled order.
+func insertNumbersUpto(rnd *rand.Rand, h *btHarness, upto int) {
 	s := make([]int, upto)
 	for i := 1; i <= upto; i++ {
 		s[i-1] = i
