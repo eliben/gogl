@@ -1,7 +1,6 @@
 package btree
 
 import (
-	"fmt"
 	"log"
 	"math/rand/v2"
 	"strconv"
@@ -304,7 +303,7 @@ func TestDeleteAllLarge(t *testing.T) {
 	bt := NewWithTee[int, string](intCmp, 4)
 	h := newHarness(t, bt)
 
-	rs := randomIntSlice(rnd, 50, 10000)
+	rs := randomIntSlice(rnd, 500, 10000)
 	for _, n := range rs {
 		h.insertNoCheck(n)
 	}
@@ -318,9 +317,6 @@ func TestDeleteAllLarge(t *testing.T) {
 	}
 	checkEmpty(t, bt)
 }
-
-// TODO: test coverage not great here... no deletions from internal nodes?
-// need to re-run tests with multiple deletion orders
 
 // randString generates a random string made from lowercase chars with minimal
 // length minLen; it uses rnd as the RNG state.
@@ -367,12 +363,4 @@ func randomIntSlice(rnd *rand.Rand, n int, upto int) []int {
 		}
 	}
 	return result
-}
-
-func TestLoggedRand(t *testing.T) {
-	//rnd := makeLoggedRand(t)
-	rnd := rand.New(rand.NewPCG(4544259680070412757, 2261521536699502743))
-	//rnd := rand.New(rand.NewPCG(6186031889983829657, 15551696344235785482))
-
-	fmt.Println(randomIntSlice(rnd, 10, 1000))
 }

@@ -353,11 +353,6 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 	if childIndex > 0 {
 		leftSibling = parent.children[childIndex-1]
 	}
-	//if debugBT {
-	//fmt.Println("  parent", parent)
-	//fmt.Println("  leftSibling", leftSibling)
-	//fmt.Println("  rightSibling", rightSibling)
-	//}
 
 	// If n's right sibling exists and has enough elements (at least the minimum
 	// plus one), rotate left.
