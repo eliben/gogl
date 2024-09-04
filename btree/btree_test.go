@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"fmt"
 	"log"
 	"math/rand/v2"
 	"strconv"
@@ -216,8 +217,17 @@ func (bh *btHarness) insertNoCheck(k int) {
 }
 
 func (bh *btHarness) del(k int) {
+	if k == 7344 {
+		debugBT = true
+		//bh.bt.renderDotToImage("bugbefore.png")
+	}
 	bh.bt.Delete(k)
 	delete(bh.m, k)
+
+	if k == 7344 {
+		//bh.bt.renderDotToImage("bugafter.png")
+	}
+
 	bh.check()
 }
 
@@ -288,14 +298,23 @@ func TestDeleteAllSmall(t *testing.T) {
 
 func TestDeleteAllLarge(t *testing.T) {
 	rnd := makeLoggedRand(t)
+	//rnd := rand.New(rand.NewPCG(9124676579633395823, 18421702321724256789))
+	//rnd := rand.New(rand.NewPCG(9402066658615267281, 9756141538724002473))
+
 	bt := NewWithTee[int, string](intCmp, 4)
 	h := newHarness(t, bt)
-	insertNumbersUpto(rnd, h, 350)
 
-	// Now delete all keys! This will involve lots of leaf and internal node
-	// deletions.
-	for i := 1; i <= 350; i++ {
-		h.del(i)
+	rs := randomIntSlice(rnd, 50, 10000)
+	for _, n := range rs {
+		h.insertNoCheck(n)
+	}
+
+	// Reshuffle rs to delete in an arbitrary order.
+	rnd.Shuffle(len(rs), func(i, j int) {
+		rs[i], rs[j] = rs[j], rs[i]
+	})
+	for _, n := range rs {
+		h.del(n)
 	}
 	checkEmpty(t, bt)
 }
@@ -332,4 +351,28 @@ func insertNumbersUpto(rnd *rand.Rand, h *btHarness, upto int) {
 	for _, num := range s {
 		h.insertNoCheck(num)
 	}
+}
+
+// randomIntSlice creates a slice of n random integers in the range [0,upto).
+// This function may run slowly unless n << upto.
+func randomIntSlice(rnd *rand.Rand, n int, upto int) []int {
+	var result []int
+	// Create a set to ensure we get n non-duplicate ints.
+	m := make(map[int]bool)
+	for len(result) < n {
+		num := rnd.IntN(upto)
+		if !m[num] {
+			m[num] = true
+			result = append(result, num)
+		}
+	}
+	return result
+}
+
+func TestLoggedRand(t *testing.T) {
+	//rnd := makeLoggedRand(t)
+	rnd := rand.New(rand.NewPCG(4544259680070412757, 2261521536699502743))
+	//rnd := rand.New(rand.NewPCG(6186031889983829657, 15551696344235785482))
+
+	fmt.Println(randomIntSlice(rnd, 10, 1000))
 }

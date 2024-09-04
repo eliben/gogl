@@ -41,6 +41,8 @@ type nodeKey[K, V any] struct {
 	value V
 }
 
+var debugBT = false
+
 // New creates a new B-tree with the given comparison function, with the
 // default branching factor tee. cmp(a, b) should return a negative number when
 // a<b, a positive number when a>b and zero when a==b.
@@ -351,6 +353,11 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 	if childIndex > 0 {
 		leftSibling = parent.children[childIndex-1]
 	}
+	//if debugBT {
+	//fmt.Println("  parent", parent)
+	//fmt.Println("  leftSibling", leftSibling)
+	//fmt.Println("  rightSibling", rightSibling)
+	//}
 
 	// If n's right sibling exists and has enough elements (at least the minimum
 	// plus one), rotate left.
@@ -387,7 +394,7 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 		// ... for internal nodes, move the child pointer from the sibling to n
 		if !n.leaf {
 			n.children = slices.Insert(n.children, 0, leftSibling.children[len(leftSibling.children)-1])
-			leftSibling.children = leftSibling.children[len(leftSibling.children)-1:]
+			leftSibling.children = leftSibling.children[:len(leftSibling.children)-1]
 		}
 
 		// 3. The tree is now balanced
@@ -446,4 +453,12 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 	} else {
 		bt.rebalance(parent, path[:len(path)-1])
 	}
+}
+
+func (n *node[K, V]) String() string {
+	var keys []K
+	for _, kv := range n.keys {
+		keys = append(keys, kv.key)
+	}
+	return fmt.Sprintf("node %p: %v", n, keys)
 }
