@@ -1,3 +1,4 @@
+// Package btree implements an in-memory B-Tree.
 package btree
 
 import (
@@ -7,6 +8,7 @@ import (
 	"strings"
 )
 
+// BTree is a generic in-memory B-Tree that can hold arbitrary keys and values.
 type BTree[K, V any] struct {
 	cmp func(K, K) int
 
@@ -50,6 +52,7 @@ func New[K, V any](cmp func(K, K) int) *BTree[K, V] {
 	return NewWithTee[K, V](cmp, defaultTee)
 }
 
+// NewWithTee is like New, but accepts a custom branching factor tee.
 func NewWithTee[K, V any](cmp func(K, K) int, tee int) *BTree[K, V] {
 	return &BTree[K, V]{
 		cmp: cmp,
@@ -99,8 +102,7 @@ func (bt *BTree[K, V]) Delete(key K) {
 		// Deletion from an internal node.
 		// n.keys[idx] is the key we want to replace; find the rightmost descendant
 		// in the left subtree of this key, and swap its largest key for n.keys[idx]
-		pathWithn := append(path, pathPart[K, V]{parent: n, childIndex: idx})
-		d, dpath := bt.rightmostDescendant(n.children[idx], pathWithn)
+		d, dpath := bt.rightmostDescendant(n.children[idx], path.push(n, idx))
 		n.keys[idx] = d.keys[len(d.keys)-1]
 		d.keys = d.keys[:len(d.keys)-1]
 
@@ -150,6 +152,7 @@ func (bt *BTree[K, V]) Stats() string {
 	return sb.String()
 }
 
+// getFromNode is a recursive helper for Get, starting at the given node n.
 func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 	kv := nodeKey[K, V]{key: key}
 	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
@@ -274,27 +277,6 @@ func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V])
 	return true
 }
 
-// treePath represents a path taken in the tree to get to a specific node.
-// If we're currently in node c, we can find its parents and siblings: c is
-// implicitly on the top of the path stack. For every node c at stack[j],
-// its parent is stack[j-1].parent and c is in that parent's children at
-// index stack[j-1].childIndex
-type treePath[K, V any] []pathPart[K, V]
-
-// last returns the destructured last element in the path. It panics if
-// the path is empty.
-func (tp treePath[K, V]) last() (*node[K, V], int) {
-	lp := tp[len(tp)-1]
-	return lp.parent, lp.childIndex
-}
-
-// TODO: have add() and pop() methods here and use them
-
-type pathPart[K, V any] struct {
-	parent     *node[K, V]
-	childIndex int
-}
-
 // findNodeForDeletion finds the node that holds key K, starting at n.
 // It returns the found node along with the index of the found key and the
 // node's treePath (that doesn't include the node itself). If the key isn't
@@ -314,21 +296,19 @@ func (bt *BTree[K, V]) findNodeForDeletion(n *node[K, V], key K, path treePath[K
 	if n.leaf {
 		return nil, 0, nil
 	}
-
-	newPath := append(path, pathPart[K, V]{
-		parent:     n,
-		childIndex: i,
-	})
-	return bt.findNodeForDeletion(n.children[i], key, newPath)
+	return bt.findNodeForDeletion(n.children[i], key, path.push(n, i))
 }
 
+// rightmostDescendant finds the rightmost node in the sub-tree starting
+// at n. The path to n should be provided, and the path of the rightmost
+// node is returned along with the node.
 func (bt *BTree[K, V]) rightmostDescendant(n *node[K, V], path treePath[K, V]) (*node[K, V], treePath[K, V]) {
 	if n.leaf {
 		return n, path
 	}
 
 	last := len(n.children) - 1
-	return bt.rightmostDescendant(n.children[last], append(path, pathPart[K, V]{parent: n, childIndex: last}))
+	return bt.rightmostDescendant(n.children[last], path.push(n, last))
 }
 
 // rebalance performs B-Tree rebalancing when n doesn't have enough keys after
@@ -446,7 +426,7 @@ func (bt *BTree[K, V]) rebalance(n *node[K, V], path treePath[K, V]) {
 			bt.root = mergedNode
 		}
 	} else {
-		bt.rebalance(parent, path[:len(path)-1])
+		bt.rebalance(parent, path.pop())
 	}
 }
 
