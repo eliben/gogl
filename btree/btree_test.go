@@ -3,6 +3,7 @@ package btree
 import (
 	"log"
 	"math/rand/v2"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -124,6 +125,8 @@ func TestManualSmall(t *testing.T) {
 
 // makeLoggedRand creates a new rand.Rand with a random source, and logs the
 // source to output so the test can be reproduced if needed.
+// To reproduce, create a rand.New(rand.NewPCG(s1, s2)) from the two seeds
+// logged by this function.
 func makeLoggedRand(t *testing.T) *rand.Rand {
 	s1, s2 := rand.Uint64(), rand.Uint64()
 	log.Printf("%s seed: %v, %v", t.Name(), s1, s2)
@@ -216,16 +219,8 @@ func (bh *btHarness) insertNoCheck(k int) {
 }
 
 func (bh *btHarness) del(k int) {
-	if k == 7344 {
-		debugBT = true
-		//bh.bt.renderDotToImage("bugbefore.png")
-	}
 	bh.bt.Delete(k)
 	delete(bh.m, k)
-
-	if k == 7344 {
-		//bh.bt.renderDotToImage("bugafter.png")
-	}
 
 	bh.check()
 }
@@ -271,8 +266,6 @@ func TestManualDeletionLeavesOnly(t *testing.T) {
 	for i := 100; i < 200; i++ {
 		h.del(i)
 	}
-	//bt.renderDotToImage("before.png")
-	//bt.renderDotToImage("after.png")
 }
 
 func TestDeleteAllSmall(t *testing.T) {
@@ -297,25 +290,78 @@ func TestDeleteAllSmall(t *testing.T) {
 
 func TestDeleteAllLarge(t *testing.T) {
 	rnd := makeLoggedRand(t)
-	//rnd := rand.New(rand.NewPCG(9124676579633395823, 18421702321724256789))
-	//rnd := rand.New(rand.NewPCG(9402066658615267281, 9756141538724002473))
 
-	bt := NewWithTee[int, string](intCmp, 4)
-	h := newHarness(t, bt)
+	// This test is repeated:
+	//
+	// * Insert some random elements into the tree (their number is also
+	//   random).
+	// * Remove all elements from the tree, one by one. Removal with
+	//   btHarness.del runs .check on the tree after every deletion.
+	// * Check that the tree is properly empty at the end of the process.
+	for tn := range 10 {
+		t.Run(strconv.Itoa(tn), func(t *testing.T) {
+			bt := NewWithTee[int, string](intCmp, 4)
+			h := newHarness(t, bt)
 
-	rs := randomIntSlice(rnd, 500, 10000)
-	for _, n := range rs {
-		h.insertNoCheck(n)
+			numElems := 200 + rnd.IntN(400)
+			rs := randomIntSlice(rnd, numElems, 10000)
+			for _, n := range rs {
+				h.insertNoCheck(n)
+			}
+
+			// Reshuffle rs to delete in an arbitrary order.
+			rnd.Shuffle(len(rs), func(i, j int) {
+				rs[i], rs[j] = rs[j], rs[i]
+			})
+			for _, n := range rs {
+				h.del(n)
+			}
+			checkEmpty(t, bt)
+		})
 	}
+}
 
-	// Reshuffle rs to delete in an arbitrary order.
-	rnd.Shuffle(len(rs), func(i, j int) {
-		rs[i], rs[j] = rs[j], rs[i]
-	})
-	for _, n := range rs {
-		h.del(n)
+func TestChurn(t *testing.T) {
+	rnd := makeLoggedRand(t)
+
+	// This test is repeated:
+	//
+	// * Insert some random elements into the tree.
+	// * In a loop:
+	//   * Insert some new elements
+	//   * Delete some elements
+	//   * (both of the last steps perform tree verification after each step)
+	for tn := range 10 {
+		t.Run(strconv.Itoa(tn), func(t *testing.T) {
+			bt := NewWithTee[int, string](intCmp, 4)
+			h := newHarness(t, bt)
+
+			numElems := tn*50 + rnd.IntN(40)
+			rs := randomIntSlice(rnd, numElems, 10000)
+			for _, n := range rs {
+				h.insertNoCheck(n)
+			}
+
+			for range 100 {
+				numInserts := 2 + rnd.IntN(1+tn*2)
+				for range numInserts {
+					elem := rnd.IntN(10000)
+					rs = append(rs, elem)
+					h.insert(elem)
+				}
+
+				numDels := 2 + rnd.IntN(1+tn*2)
+				for range numDels {
+					elem := rs[rnd.IntN(len(rs))]
+					h.del(elem)
+					rs = slices.DeleteFunc(rs, func(e int) bool { return e == elem })
+					if len(rs) == 0 {
+						break
+					}
+				}
+			}
+		})
 	}
-	checkEmpty(t, bt)
 }
 
 // randString generates a random string made from lowercase chars with minimal
