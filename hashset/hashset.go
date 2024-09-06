@@ -47,8 +47,8 @@ func (hs *HashSet[T]) Delete(val T) {
 // All returns an iterator over all the values in the set.
 func (hs *HashSet[T]) All() iter.Seq[T] {
 	return func(yield func(T) bool) {
-		for val := range hs.m {
-			if !yield(val) {
+		for v := range hs.m {
+			if !yield(v) {
 				return
 			}
 		}
@@ -73,6 +73,17 @@ func (hs *HashSet[T]) Intersection(other *HashSet[T]) *HashSet[T] {
 	result := New[T]()
 	for v := range hs.m {
 		if other.Contains(v) {
+			result.Add(v)
+		}
+	}
+	return result
+}
+
+// Difference returns the set difference hs - other. It creates a new set.
+func (hs *HashSet[T]) Difference(other *HashSet[T]) *HashSet[T] {
+	result := New[T]()
+	for v := range hs.m {
+		if !other.Contains(v) {
 			result.Add(v)
 		}
 	}
