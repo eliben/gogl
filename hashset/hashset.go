@@ -13,6 +13,15 @@ func New[T comparable]() *HashSet[T] {
 	return &HashSet[T]{m: make(map[T]struct{})}
 }
 
+// InitWith creates a new HashSet initialized with vals.
+func InitWith[T comparable](vals ...T) *HashSet[T] {
+	hs := New[T]()
+	for _, v := range vals {
+		hs.Add(v)
+	}
+	return hs
+}
+
 // Add adds a value to the set.
 func (hs *HashSet[T]) Add(val T) {
 	hs.m[val] = struct{}{}
@@ -44,4 +53,16 @@ func (hs *HashSet[T]) All() iter.Seq[T] {
 			}
 		}
 	}
+}
+
+// Union returns the set union of hs with other. It creates a new set.
+func (hs *HashSet[T]) Union(other *HashSet[T]) *HashSet[T] {
+	result := New[T]()
+	for v := range hs.m {
+		result.Add(v)
+	}
+	for v := range other.m {
+		result.Add(v)
+	}
+	return result
 }
