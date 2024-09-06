@@ -96,16 +96,30 @@ func TestContains(t *testing.T) {
 	}
 }
 
-func TestUnion(t *testing.T) {
+func TestSetOperations(t *testing.T) {
 	hs1 := InitWith(10, 20, 30, 40)
-	hs2 := InitWith(11, 21, 30, 41)
 
-	u1 := hs1.Union(hs2)
+	hs11 := InitWith(11, 21, 30, 41)
+	u1 := hs1.Union(hs11)
 	checkAll(t, u1, []int{10, 11, 20, 21, 30, 40, 41})
+	i1 := hs1.Intersection(hs11)
+	checkAll(t, i1, []int{30})
 
-	u2 := hs1.Union(InitWith(20))
+	hs22 := InitWith(20)
+	u2 := hs1.Union(hs22)
 	checkAll(t, u2, []int{10, 20, 30, 40})
+	i2 := hs1.Intersection(hs22)
+	checkAll(t, i2, []int{20})
 
-	u3 := hs1.Union(InitWith(90))
+	hs33 := InitWith(90)
+	u3 := hs1.Union(hs33)
 	checkAll(t, u3, []int{10, 20, 30, 40, 90})
+	i3 := hs1.Intersection(hs33)
+	checkAll(t, i3, []int{})
+
+	hs44 := InitWith(20, 30, 50, 60)
+	u4 := hs1.Union(hs44)
+	checkAll(t, u4, []int{10, 20, 30, 40, 50, 60})
+	i4 := hs1.Intersection(hs44)
+	checkAll(t, i4, []int{20, 30})
 }

@@ -66,3 +66,15 @@ func (hs *HashSet[T]) Union(other *HashSet[T]) *HashSet[T] {
 	}
 	return result
 }
+
+// Intersection returns the set intersection of hs with other. It creates a
+// new set.
+func (hs *HashSet[T]) Intersection(other *HashSet[T]) *HashSet[T] {
+	result := New[T]()
+	for v := range hs.m {
+		if other.Contains(v) {
+			result.Add(v)
+		}
+	}
+	return result
+}
