@@ -2,6 +2,7 @@ package btree
 
 import (
 	"log"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"strconv"
@@ -197,6 +198,17 @@ func TestLargeStrings(t *testing.T) {
 		if !ok || v != mp[strs[i]] {
 			t.Errorf("not found or wrong value, got %v, want %v", v, mp[strs[i]])
 		}
+	}
+
+	// Use All to get all keys in sorted order, and ensure they match
+	// the sorted order of keys in mp.
+	var allKeys []string
+	for k := range bt.All() {
+		allKeys = append(allKeys, k)
+	}
+	sortedKeys := slices.Sorted(maps.Keys(mp))
+	if !slices.Equal(allKeys, sortedKeys) {
+		t.Errorf("All() keys not sorted")
 	}
 }
 

@@ -119,7 +119,8 @@ func (bt *BTree[K, V]) Delete(key K) {
 	}
 }
 
-// All returns an iterator over all key-value pairs in the tree, in order.
+// All returns an iterator over all key-value pairs in the tree, in order
+// (sorted by key).
 func (bt *BTree[K, V]) All() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		bt.pushAll(yield, bt.root)
