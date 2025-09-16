@@ -118,7 +118,7 @@ func TestManualSmall(t *testing.T) {
 
 	// Smoke test stats printing
 	stats := bt.Stats()
-	if strings.Index(stats, "Keys") < 0 {
+	if !strings.Contains(stats, "Keys") {
 		t.Errorf("got bad stats:\n%s\n", stats)
 	}
 }
