@@ -66,7 +66,11 @@ func NewWithTee[K, V any](cmp func(K, K) int, tee int) *BTree[K, V] {
 // Get looks for the given key in the tree. It returns the associated value
 // and ok=true; otherwise, it returns ok=false.
 func (bt *BTree[K, V]) Get(key K) (v V, ok bool) {
-	return bt.getFromNode(key, bt.root)
+	n, idx := bt.getFromNode(key, bt.root)
+	if n == nil {
+		return *new(V), false
+	}
+	return n.keys[idx].value, true
 }
 
 // Insert inserts a new key=value pair into the tree. If `key` already exists
@@ -152,8 +156,10 @@ func (bt *BTree[K, V]) Stats() string {
 	return sb.String()
 }
 
-// getFromNode is a recursive helper for Get, starting at the given node n.
-func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
+// getFromNode finds the node that holds key K, and K's index in the node's
+// keys. It starts the search from node n. If the key isn't found in n or
+// its descendants, the first returned value is nil.
+func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (*node[K, V], int) {
 	kv := nodeKey[K, V]{key: key}
 	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
 
@@ -164,10 +170,10 @@ func (bt *BTree[K, V]) getFromNode(key K, n *node[K, V]) (v V, ok bool) {
 	//     meaning that keys[i-i] < key < keys[i]; therefore, we recurse into
 	//     children[i], based on the key ordering invariant.
 	if ok {
-		return n.keys[i].value, true
+		return n, i
 	}
 	if n.leaf {
-		return *new(V), false
+		return nil, -1
 	}
 	return bt.getFromNode(key, n.children[i])
 }
