@@ -119,6 +119,42 @@ func (bt *BTree[K, V]) Delete(key K) {
 	}
 }
 
+// All returns an iterator over all key-value pairs in the tree, in order.
+func (bt *BTree[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		bt.pushAll(yield, bt.root)
+	}
+}
+
+// pushAll is a recursive push iterator helper for All.
+func (bt *BTree[K, V]) pushAll(yield func(K, V) bool, n *node[K, V]) bool {
+	if n.leaf {
+		for _, kv := range n.keys {
+			if !yield(kv.key, kv.value) {
+				return false
+			}
+		}
+	} else {
+		for i, kv := range n.keys {
+			if i < len(n.children) {
+				if !bt.pushAll(yield, n.children[i]) {
+					return false
+				}
+			}
+
+			if !yield(kv.key, kv.value) {
+				return false
+			}
+		}
+		if len(n.children) > len(n.keys) {
+			if !bt.pushAll(yield, n.children[len(n.children)-1]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // Stats returns a string with statistics about this B-Tree: total number of
 // keys, nodes, leaf nodes etc.
 func (bt *BTree[K, V]) Stats() string {

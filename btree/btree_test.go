@@ -116,6 +116,19 @@ func TestManualSmall(t *testing.T) {
 
 	checkVerify(t, bt)
 
+	rkeys := []int{}
+	rvals := []string{}
+	for k, v := range bt.All() {
+		rkeys = append(rkeys, k)
+		rvals = append(rvals, v)
+	}
+	if !slices.Equal(rkeys, []int{1, 2, 3, 4, 5, 8, 9, 11}) {
+		t.Errorf("got keys %v, want [1 2 3 4 5 8 9 11]", rkeys)
+	}
+	if !slices.Equal(rvals, []string{"1", "22", "3", "4", "5", "8", "99", "11"}) {
+		t.Errorf("got vals %v, want [1 22 3 4 5 8 99 11]", rvals)
+	}
+
 	// Smoke test stats printing
 	stats := bt.Stats()
 	if !strings.Contains(stats, "Keys") {
