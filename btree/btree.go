@@ -95,7 +95,7 @@ func (bt *BTree[K, V]) Insert(key K, value V) {
 // is not found in the tree, Delete is a no-op.
 func (bt *BTree[K, V]) Delete(key K) {
 	var emptyPath treePath[K, V]
-	n, idx, path := bt.findNodeForDeletion(bt.root, key, emptyPath)
+	n, idx, path := bt.findNodeForKey(bt.root, key, emptyPath)
 
 	if n == nil {
 		return
@@ -320,11 +320,11 @@ func (bt *BTree[K, V]) pushPreOrder(yield func(*node[K, V]) bool, n *node[K, V])
 	return true
 }
 
-// findNodeForDeletion finds the node that holds key K, starting at n.
+// findNodeForKey finds the node that holds key K, starting at n.
 // It returns the found node along with the index of the found key and the
 // node's treePath (that doesn't include the node itself). If the key isn't
 // found in n or its descendants, the first returned value is nil.
-func (bt *BTree[K, V]) findNodeForDeletion(n *node[K, V], key K, path treePath[K, V]) (*node[K, V], int, treePath[K, V]) {
+func (bt *BTree[K, V]) findNodeForKey(n *node[K, V], key K, path treePath[K, V]) (*node[K, V], int, treePath[K, V]) {
 	kv := nodeKey[K, V]{key: key}
 	i, ok := slices.BinarySearchFunc(n.keys, kv, bt.nodeKeyCmp)
 
@@ -339,7 +339,7 @@ func (bt *BTree[K, V]) findNodeForDeletion(n *node[K, V], key K, path treePath[K
 	if n.leaf {
 		return nil, 0, nil
 	}
-	return bt.findNodeForDeletion(n.children[i], key, path.push(n, i))
+	return bt.findNodeForKey(n.children[i], key, path.push(n, i))
 }
 
 // rightmostDescendant finds the rightmost node in the sub-tree starting
