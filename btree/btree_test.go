@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"fmt"
 	"log"
 	"maps"
 	"math/rand/v2"
@@ -128,6 +129,33 @@ func TestManualSmall(t *testing.T) {
 	}
 	if !slices.Equal(rvals, []string{"1", "22", "3", "4", "5", "8", "99", "11"}) {
 		t.Errorf("got vals %v, want [1 22 3 4 5 8 99 11]", rvals)
+	}
+
+	// Table test of successor for all values here
+	tests := []struct {
+		key     int
+		succKey int
+		succVal string
+		succOk  bool
+	}{
+		{1, 2, "22", true},
+		{2, 3, "3", true},
+		{3, 4, "4", true},
+		{4, 5, "5", true},
+		{5, 8, "8", true},
+		{8, 9, "99", true},
+		{9, 11, "11", true},
+		{11, 0, "", false},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Successor-for-key=%d", test.key), func(t *testing.T) {
+			succKey, succVal, ok := bt.Successor(test.key)
+			if ok != test.succOk || succKey != test.succKey || succVal != test.succVal {
+				t.Errorf("got successor of %v = (%v,%v,%v), want (%v,%v,%v)",
+					test.key, succKey, succVal, ok,
+					test.succKey, test.succVal, test.succOk)
+			}
+		})
 	}
 
 	// Smoke test stats printing

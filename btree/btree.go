@@ -119,6 +119,48 @@ func (bt *BTree[K, V]) Delete(key K) {
 	}
 }
 
+// Successor finds the successor of the given key in the tree, meaning the
+// smallest key in the tree that is larger than the given key. If the key
+// itself isn't found, or if the key has no successor (it's the largest key
+// in the tree), Successor returns ok=false.
+func (bt *BTree[K, V]) Successor(key K) (K, V, bool) {
+	var emptyPath treePath[K, V]
+	n, idx, path := bt.findNodeForKey(bt.root, key, emptyPath)
+	if n == nil {
+		return *new(K), *new(V), false
+	}
+
+	// Internal node: the successor is the leftmost key in the next child after
+	// the current key.
+	if !n.leaf {
+		n = bt.leftmostDescendant(n.children[idx+1])
+		return n.keys[0].key, n.keys[0].value, true
+	}
+
+	// Leaf: if the key is not the last key in the node, the successor is the
+	// next key in the same node.
+	//
+	// Otherwise, we need to go up the tree to find the successor.
+	if idx+1 < len(n.keys) {
+		return n.keys[idx+1].key, n.keys[idx+1].value, true
+	}
+
+	// Climb up the path until we find a node which isn't the last child of its
+	// parent.
+	for {
+		if len(path) == 0 {
+			// We've reached the root and didn't find a successor.
+			return *new(K), *new(V), false
+		}
+		parent, childIndex := path.last()
+		if childIndex < len(parent.keys) {
+			// The successor is the key at childIndex in parent.
+			return parent.keys[childIndex].key, parent.keys[childIndex].value, true
+		}
+		path = path.pop()
+	}
+}
+
 // All returns an iterator over all key-value pairs in the tree, in order
 // (sorted by key).
 func (bt *BTree[K, V]) All() iter.Seq2[K, V] {
@@ -352,6 +394,16 @@ func (bt *BTree[K, V]) rightmostDescendant(n *node[K, V], path treePath[K, V]) (
 
 	last := len(n.children) - 1
 	return bt.rightmostDescendant(n.children[last], path.push(n, last))
+}
+
+// leftmostDescendant finds the leftmost node in the sub-tree starting
+// at n.
+func (bt *BTree[K, V]) leftmostDescendant(n *node[K, V]) *node[K, V] {
+	if n.leaf {
+		return n
+	}
+
+	return bt.leftmostDescendant(n.children[0])
 }
 
 // rebalance performs B-Tree rebalancing when n doesn't have enough keys after
